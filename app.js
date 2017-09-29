@@ -44,6 +44,10 @@ app.use(function(err, req, res, next) {
 });
 
 var tokenService = require('./trkd/TokenService');
-tokenService.CreateToken();
+// tokenService.CreateToken();
+// setTimeout(function () {
+    // tokenService.CreateImpersonationToken();
+    tokenService.validateToken('14AF8DFFD2DBB3DFF05067B75EA27488BBEBAC031AC1FE0382F1BFBDDC0C8CDC23BB190DE21552FE739B07F2BCC1DF0C1999D2CABF9B8DC742105B8DC166B4F4A48A3EDE83B48748D691A77A8F8FC8A6D5FADC35298A842C2A33A6B1EF6545F2');
+// },5000);
 
 module.exports = app;
