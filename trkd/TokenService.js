@@ -16,6 +16,13 @@ const validateTokenUrl = "http://api.trkd.thomsonreuters.com/api/TokenManagement
 
 const token = 'B0A258E5149256A5CABDAABA0CAF586832E543D845B2DDE5915365C024FB74B55C43AAB69C3DA9747904FD43E086D20B7FAEE61C2AB90B3C2D5969A44107F66B498C2D6D680C21150E9B6FAAA7B7839880A56BAABDE1DCDD35878871547E1297';
 
+// {
+//     "CreateServiceToken_Request_1" :{
+//         "Username": "trkd-demo-wm@thomsonreuters.com",
+//         "ApplicationID": "trkddemoappwm",
+//         "Password": "r5c4z68bl"
+//     }
+// }
 
 /**
  * Save token and expire time into files and memory.
