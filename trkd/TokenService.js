@@ -5,10 +5,13 @@
  */
 
 var request = require('request');
+var fs = require('fs');
+var schedule = require('node-schedule');
+var constants = require('../constants');
 
-const username = 'trkd-demo-cs@thomsonreuters.com',
-    applicationId = 'trkddemoappcs',
-    password = 'b2t3b45az';
+const username = 'trkd-demo-wm@thomsonreuters.com',
+    applicationId = 'trkddemoappwm',
+    password = 'r5c4z68bl';
 
 var url = "https://api.trkd.thomsonreuters.com/api/TokenManagement/TokenManagement.svc/REST/Anonymous/TokenManagement_1/CreateServiceToken_1";
 var url2 = "http://api.trkd.thomsonreuters.com/api/TokenManagement/TokenManagement.svc/REST/TokenManagement_1/CreateImpersonationToken_3";
@@ -32,14 +35,36 @@ const token = 'B0A258E5149256A5CABDAABA0CAF586832E543D845B2DDE5915365C024FB74B55
  */
 class TokenService {
 
-    getToken(){
-        return new Promise((resolve,reject)=>{
-
-        });
+    getToken() {
+        console.log('getToken')
+        if (this.token && this.expireTime) {
+            if (Date.now() < new Date(this.expireTime)) {
+                console.log('return token from memory.');
+                return this.token;
+            } else {
+                return this.CreateToken();
+            }
+        }
+        else if (fs.existsSync(constants.tokenFilePath)) {
+            try {
+                var content = fs.readFileSync(constants.tokenFilePath, 'utf8');
+                var cacheToken = JSON.parse(content);
+                this.token = cacheToken.token;
+                this.expireTime = cacheToken.expireTime;
+                console.log('return token from file.');
+                return this.token;
+            } catch (e) {
+                console.log(e);
+                return this.CreateToken();
+            }
+        } else {
+            return this.CreateToken();
+        }
     }
 
     CreateToken() {
-        return new Promise((resolve,reject)=>{
+        console.log('create a new token')
+        return new Promise((resolve, reject) => {
             var options = {
                 url: url,
                 json: {
@@ -51,21 +76,33 @@ class TokenService {
                 }
             };
 
-            /**
-             * { CreateServiceToken_Response_1: {
-         *  Expiration: '2017-09-29T10:53:29.9553389Z',
-         *  Token: '' } } }
-             */
 
             const callback = (error, response, body) => {
                 if (!error && response.statusCode == 200) {
                     console.log(`Token : ${body.CreateServiceToken_Response_1.Token}`);
                     this.token = body.CreateServiceToken_Response_1.Token;
+                    this.expireTime = body.CreateServiceToken_Response_1.Expiration;
+                    schedule.scheduleJob(new Date(this.expireTime), () => {
+                        console.log(`refresh token ${Date.now().toUTCString()}`);
+                        this.CreateToken();
+                    });
+                    console.log(`set up scheduler to refresh token at ${new Date(this.expireTime).toUTCString()}`);
+                    var cacheData = {
+                        token: this.token,
+                        expireTime: this.expireTime
+                    }
+                    // fs.openSync(constants.tokenFilePath, 'w');
+                    fs.writeFile(constants.tokenFilePath, JSON.stringify(cacheData), function (err) {
+                        if (err) {
+                            return console.log(err);
+                        }
+                        console.log(`Token saved in ${constants.tokenFilePath}!`);
+                    });
                     resolve(body.CreateServiceToken_Response_1.Token)
-                }else {
+                } else {
                     reject(body);
                 }
-            }
+            };
 
             request.post(options, callback)
         });
@@ -80,8 +117,8 @@ class TokenService {
         };
         const options = {
             url: validateTokenUrl,
-            headers:{
-                'X-Trkd-Auth-ApplicationID':applicationId,
+            headers: {
+                'X-Trkd-Auth-ApplicationID': applicationId,
                 'X-Trkd-Auth-Token': token || this.token
             },
             json: requestJson
@@ -91,13 +128,13 @@ class TokenService {
             // console.log(error,response.statusCode)
             if (!error && response.statusCode == 200) {
                 // console.log(error,response.statusCode)
-                if(body.ValidateToken_Response_1.Valid){
+                if (body.ValidateToken_Response_1.Valid) {
                     console.log('valid')
-                }else{
+                } else {
                     console.log('invalid')
                 }
-            }else {
-                console.log(JSON.stringify(body,'',4));
+            } else {
+                console.log(JSON.stringify(body, '', 4));
             }
         })
     }
