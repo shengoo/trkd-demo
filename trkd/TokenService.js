@@ -51,6 +51,7 @@ class TokenService {
                 var cacheToken = JSON.parse(content);
                 this.token = cacheToken.token;
                 this.expireTime = cacheToken.expireTime;
+                this.setupScheduler();
                 console.log('return token from file.');
                 return this.token;
             } catch (e) {
@@ -60,6 +61,14 @@ class TokenService {
         } else {
             return this.CreateToken();
         }
+    }
+
+    setupScheduler(){
+        schedule.scheduleJob(new Date(this.expireTime), () => {
+            console.log(`refresh token ${Date.now().toUTCString()}`);
+            this.CreateToken();
+        });
+        console.log(`set up scheduler to refresh token at ${new Date(this.expireTime).toUTCString()}`);
     }
 
     CreateToken() {
@@ -79,14 +88,10 @@ class TokenService {
 
             const callback = (error, response, body) => {
                 if (!error && response.statusCode == 200) {
-                    console.log(`Token : ${body.CreateServiceToken_Response_1.Token}`);
+                    // console.log(`Token : ${body.CreateServiceToken_Response_1.Token}`);
                     this.token = body.CreateServiceToken_Response_1.Token;
                     this.expireTime = body.CreateServiceToken_Response_1.Expiration;
-                    schedule.scheduleJob(new Date(this.expireTime), () => {
-                        console.log(`refresh token ${Date.now().toUTCString()}`);
-                        this.CreateToken();
-                    });
-                    console.log(`set up scheduler to refresh token at ${new Date(this.expireTime).toUTCString()}`);
+                    this.setupScheduler();
                     var cacheData = {
                         token: this.token,
                         expireTime: this.expireTime

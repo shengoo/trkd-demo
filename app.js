@@ -65,12 +65,12 @@ var dir = './cache';
 if (!fs.existsSync(dir)){
     fs.mkdirSync(dir);
 }
-fs.writeFile('./cache/test', 'utf8', function (err,data) {
-    if (err) {
-        return console.log(err);
-    }
-    console.log("The file was saved!");
-});
+// fs.writeFile('./cache/test', 'utf8', function (err,data) {
+//     if (err) {
+//         return console.log(err);
+//     }
+//     console.log("The file was saved!");
+// });
 
 
 var time = new Date("2017-10-17T08:10:37.0142147Z");
