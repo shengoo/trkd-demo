@@ -38,7 +38,7 @@ class TokenService {
     getToken() {
         console.log('getToken')
         if (this.token && this.expireTime) {
-            if (Date.now() < new Date(this.expireTime)) {
+            if (new Date() < new Date(this.expireTime)) {
                 console.log('return token from memory.');
                 return this.token;
             } else {
@@ -51,9 +51,14 @@ class TokenService {
                 var cacheToken = JSON.parse(content);
                 this.token = cacheToken.token;
                 this.expireTime = cacheToken.expireTime;
-                this.setupScheduler();
-                console.log('return token from file.');
-                return this.token;
+                if (new Date() < new Date(this.expireTime)) {
+                    this.setupScheduler();
+                    console.log('return token from file.');
+                    return this.token;
+                } else {
+                    return this.CreateToken();
+                }
+
             } catch (e) {
                 console.log(e);
                 return this.CreateToken();
@@ -65,10 +70,10 @@ class TokenService {
 
     setupScheduler(){
         schedule.scheduleJob(new Date(this.expireTime), () => {
-            console.log(`refresh token ${Date.now().toUTCString()}`);
+            console.log(`refresh token ${new Date().toLocaleString()}`);
             this.CreateToken();
         });
-        console.log(`set up scheduler to refresh token at ${new Date(this.expireTime).toUTCString()}`);
+        console.log(`set up scheduler to refresh token at ${new Date(this.expireTime).toLocaleString()}`);
     }
 
     CreateToken() {
@@ -97,7 +102,7 @@ class TokenService {
                         expireTime: this.expireTime
                     }
                     // fs.openSync(constants.tokenFilePath, 'w');
-                    fs.writeFile(constants.tokenFilePath, JSON.stringify(cacheData), function (err) {
+                    fs.writeFile(constants.tokenFilePath, JSON.stringify(cacheData,null,4), function (err) {
                         if (err) {
                             return console.log(err);
                         }
