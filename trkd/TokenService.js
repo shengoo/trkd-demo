@@ -17,15 +17,6 @@ var url = "https://api.trkd.thomsonreuters.com/api/TokenManagement/TokenManageme
 var url2 = "http://api.trkd.thomsonreuters.com/api/TokenManagement/TokenManagement.svc/REST/TokenManagement_1/CreateImpersonationToken_3";
 const validateTokenUrl = "http://api.trkd.thomsonreuters.com/api/TokenManagement/TokenManagement.svc/REST/TokenManagement_1/ValidateToken_1";
 
-const token = 'B0A258E5149256A5CABDAABA0CAF586832E543D845B2DDE5915365C024FB74B55C43AAB69C3DA9747904FD43E086D20B7FAEE61C2AB90B3C2D5969A44107F66B498C2D6D680C21150E9B6FAAA7B7839880A56BAABDE1DCDD35878871547E1297';
-
-// {
-//     "CreateServiceToken_Request_1" :{
-//         "Username": "trkd-demo-wm@thomsonreuters.com",
-//         "ApplicationID": "trkddemoappwm",
-//         "Password": "r5c4z68bl"
-//     }
-// }
 
 /**
  * Save token and expire time into files and memory.
@@ -35,48 +26,72 @@ const token = 'B0A258E5149256A5CABDAABA0CAF586832E543D845B2DDE5915365C024FB74B55
  */
 class TokenService {
 
-    getToken() {
-        console.log('getToken')
-        if (this.token && this.expireTime) {
-            if (new Date() < new Date(this.expireTime)) {
-                console.log('return token from memory.');
-                return this.token;
-            } else {
-                return this.CreateToken();
-            }
-        }
-        else if (fs.existsSync(constants.tokenFilePath)) {
+    /**
+     * sync constructor
+     */
+    constructor() {
+        console.log(`TokenService constructor `)
+        this.loadToken()
+        this.validateToken(this.token)
+    }
+
+    /**
+     * load token from file and save into memory
+     * if token expires, get a new one.
+     */
+    loadToken() {
+        if (fs.existsSync(constants.tokenFilePath)) {
             try {
                 var content = fs.readFileSync(constants.tokenFilePath, 'utf8');
                 var cacheToken = JSON.parse(content);
                 this.token = cacheToken.token;
-                this.expireTime = cacheToken.expireTime;
-                if (new Date() < new Date(this.expireTime)) {
+                this.expireTime = new Date(cacheToken.expireTime);
+                if (new Date() < this.expireTime) {
+                    console.log('load token from file.');
                     this.setupScheduler();
-                    console.log('return token from file.');
-                    return this.token;
                 } else {
-                    return this.CreateToken();
+                    this.createToken();
                 }
-
             } catch (e) {
                 console.log(e);
-                return this.CreateToken();
+                this.createToken();
             }
         } else {
-            return this.CreateToken();
+            this.createToken();
         }
     }
 
-    setupScheduler(){
-        schedule.scheduleJob(new Date(this.expireTime), () => {
-            console.log(`refresh token ${new Date().toLocaleString()}`);
-            this.CreateToken();
-        });
-        console.log(`set up scheduler to refresh token at ${new Date(this.expireTime).toLocaleString()}`);
+    /**
+     * return token
+     * @returns {*}
+     */
+    getToken() {
+        console.log('getToken')
+        if (new Date() < this.expireTime) {
+            console.log('return token from memory.');
+            return this.token;
+        } else {
+            return this.createToken();
+        }
     }
 
-    CreateToken() {
+    /**
+     * set up a scheduler to retrieve new token
+     */
+    setupScheduler() {
+        schedule.scheduleJob(this.expireTime, () => {
+            console.log(`refresh token ${new Date().toLocaleString()}`);
+            this.createToken();
+        });
+        console.log(`set up scheduler to refresh token at ${this.expireTime.toLocaleString()}`);
+    }
+
+    /**
+     *
+     * @returns {Promise}
+     * @constructor
+     */
+    createToken() {
         console.log('create a new token')
         return new Promise((resolve, reject) => {
             var options = {
@@ -95,14 +110,14 @@ class TokenService {
                 if (!error && response.statusCode == 200) {
                     // console.log(`Token : ${body.CreateServiceToken_Response_1.Token}`);
                     this.token = body.CreateServiceToken_Response_1.Token;
-                    this.expireTime = body.CreateServiceToken_Response_1.Expiration;
+                    this.expireTime = new Date(body.CreateServiceToken_Response_1.Expiration);
                     this.setupScheduler();
                     var cacheData = {
                         token: this.token,
-                        expireTime: this.expireTime
+                        expireTime: body.CreateServiceToken_Response_1.Expiration
                     }
                     // fs.openSync(constants.tokenFilePath, 'w');
-                    fs.writeFile(constants.tokenFilePath, JSON.stringify(cacheData,null,4), function (err) {
+                    fs.writeFile(constants.tokenFilePath, JSON.stringify(cacheData, null, 4), function (err) {
                         if (err) {
                             return console.log(err);
                         }
